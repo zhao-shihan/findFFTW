@@ -7,7 +7,7 @@
 #   Copyright (c) 2017, Patrick Bos
 #
 # Usage:
-#   find_package(FFTW [REQUIRED] [QUIET] [COMPONENTS component1 ... componentX] )
+#   find_package(FFTW [<version>] [REQUIRED] [QUIET] [COMPONENTS component1 ... componentX] )
 #
 # It sets the following variables:
 #   FFTW_FOUND                  ... true if fftw is found on the system
