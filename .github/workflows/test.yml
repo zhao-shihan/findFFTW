@@ -1,4 +1,4 @@
-name: Test FindFFTW
+name: Test findFFTW
 
 on:
   push:
@@ -8,49 +8,39 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
-    name: Test (${{ matrix.install_method }})
+  test-apt:
+    name: Test apt install
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # System package manager install — tests basic precision types plus threads and OpenMP
-          - install_method: apt
-            fftw_components: "DOUBLE_LIB;FLOAT_LIB;LONGDOUBLE_LIB;DOUBLE_THREADS_LIB;FLOAT_THREADS_LIB;LONGDOUBLE_THREADS_LIB;DOUBLE_OPENMP_LIB;FLOAT_OPENMP_LIB;LONGDOUBLE_OPENMP_LIB"
-
-          # Source tarball build with threads and OpenMP — tests all nine variants
-          # (3 precisions × {basic, threads, openmp}); result is cached.
-          - install_method: source
-            fftw_components: "DOUBLE_LIB;DOUBLE_THREADS_LIB;DOUBLE_OPENMP_LIB;FLOAT_LIB;FLOAT_THREADS_LIB;FLOAT_OPENMP_LIB;LONGDOUBLE_LIB;LONGDOUBLE_THREADS_LIB;LONGDOUBLE_OPENMP_LIB"
-
-          # conda-forge install — tests basic precision types plus thread-safe variants
-          - install_method: conda
-            fftw_components: "DOUBLE_LIB;FLOAT_LIB;LONGDOUBLE_LIB;DOUBLE_THREADS_LIB;FLOAT_THREADS_LIB;LONGDOUBLE_THREADS_LIB"
-
+    env:
+      fftw_components: "DOUBLE_LIB;FLOAT_LIB;LONGDOUBLE_LIB;DOUBLE_THREADS_LIB;FLOAT_THREADS_LIB;LONGDOUBLE_THREADS_LIB;DOUBLE_OPENMP_LIB;FLOAT_OPENMP_LIB;LONGDOUBLE_OPENMP_LIB"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      # -----------------------------------------------------------------------
-      # Install method: apt
-      # -----------------------------------------------------------------------
-      - name: Install FFTW with apt
-        if: matrix.install_method == 'apt'
+      - name: Install FFTW
         run: sudo apt-get install -y libfftw3-dev
 
-      # -----------------------------------------------------------------------
-      # Install method: source tarball (cached)
-      # -----------------------------------------------------------------------
-      - name: Cache FFTW source build
-        if: matrix.install_method == 'source'
+      - name: Configure test
+        run: |
+          cmake -S test -B build \
+            -DFFTW_TEST_COMPONENTS="${fftw_components}"
+
+  test-source:
+    name: Test source install
+    runs-on: ubuntu-latest
+    env:
+      fftw_components: "DOUBLE_LIB;DOUBLE_THREADS_LIB;DOUBLE_OPENMP_LIB;FLOAT_LIB;FLOAT_THREADS_LIB;FLOAT_OPENMP_LIB;LONGDOUBLE_LIB;LONGDOUBLE_THREADS_LIB;LONGDOUBLE_OPENMP_LIB"
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Cache FFTW build
         id: cache-fftw
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/fftw_install
           key: fftw-3.3.10-${{ runner.os }}-double-float-longdouble-threads-openmp
 
       - name: Build FFTW from source tarball
-        if: matrix.install_method == 'source' && steps.cache-fftw.outputs.cache-hit != 'true'
+        if: steps.cache-fftw.outputs.cache-hit != 'true'
         run: |
           mkdir -p ~/fftw_build ~/fftw_install
           cd ~/fftw_build
@@ -83,38 +73,29 @@ jobs:
           make install
           cd ..
 
-      # -----------------------------------------------------------------------
-      # Install method: conda-forge
-      # -----------------------------------------------------------------------
+      - name: Configure test
+        run: |
+          cmake -S test -B build \
+            -DFFTW_ROOT="$HOME/fftw_install" \
+            -DFFTW_TEST_COMPONENTS="${fftw_components}"
+
+  test-conda:
+    name: Test conda-forge install
+    runs-on: ubuntu-latest
+    env:
+      fftw_components: "DOUBLE_LIB;FLOAT_LIB;LONGDOUBLE_LIB;DOUBLE_THREADS_LIB;FLOAT_THREADS_LIB;LONGDOUBLE_THREADS_LIB"
+    steps:
+      - uses: actions/checkout@v6
       - name: Install FFTW with conda-forge (micromamba)
-        if: matrix.install_method == 'conda'
-        uses: mamba-org/setup-micromamba@v2
+        uses: mamba-org/setup-micromamba@v3
         with:
           environment-name: fftw-test
           create-args: conda-forge::fftw
           init-shell: bash
           post-cleanup: none
-
-      # -----------------------------------------------------------------------
-      # Run the test: configure the CMake test project
-      # -----------------------------------------------------------------------
-      - name: Configure test (apt)
-        if: matrix.install_method == 'apt'
-        run: |
-          cmake -S test -B build \
-            -DFFTW_TEST_COMPONENTS="${{ matrix.fftw_components }}"
-
-      - name: Configure test (source)
-        if: matrix.install_method == 'source'
-        run: |
-          cmake -S test -B build \
-            -DFFTW_ROOT="$HOME/fftw_install" \
-            -DFFTW_TEST_COMPONENTS="${{ matrix.fftw_components }}"
-
-      - name: Configure test (conda)
-        if: matrix.install_method == 'conda'
+      - name: Configure test
         shell: micromamba-shell {0}
         run: |
           cmake -S test -B build \
             -DFFTW_ROOT="$CONDA_PREFIX" \
-            -DFFTW_TEST_COMPONENTS="${{ matrix.fftw_components }}"
+            -DFFTW_TEST_COMPONENTS="${fftw_components}"
