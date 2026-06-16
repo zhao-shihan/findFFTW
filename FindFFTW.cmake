@@ -398,6 +398,7 @@ include(FindPackageHandleStandardArgs)
 
 find_package_handle_standard_args(FFTW
     REQUIRED_VARS FFTW_INCLUDE_DIRS
+    VERSION_VAR PKG_FFTW_VERSION
     HANDLE_COMPONENTS
     )
 
