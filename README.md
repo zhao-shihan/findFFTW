@@ -14,6 +14,7 @@ This module sets the following variables:
 - `FFTW_LIBRARIES`              ... full paths to all found fftw libraries
 - `FFTW_[component]_LIB`        ... full path to one of the components (see below)
 - `FFTW_INCLUDE_DIRS`           ... fftw include directory paths
+- `FFTW_VERSION`                ... version of the found fftw library
 
 The following variables will be checked by the module:
 - `FFTW_USE_STATIC_LIBS`        ... if true, only static libraries are found, otherwise both static and shared.
