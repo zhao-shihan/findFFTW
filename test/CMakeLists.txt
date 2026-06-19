@@ -6,10 +6,10 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/..")
 
 # Find FFTW. If FFTW_TEST_COMPONENTS is given (semicolon-separated list), those
 # components are required; otherwise we just require that FFTW itself is found.
-if(DEFINED FFTW_TEST_COMPONENTS)
-    find_package(FFTW REQUIRED COMPONENTS ${FFTW_TEST_COMPONENTS})
+if(FFTW_TEST_COMPONENTS)
+    find_package(FFTW ${FFTW_TEST_VERSION} REQUIRED COMPONENTS ${FFTW_TEST_COMPONENTS})
 else()
-    find_package(FFTW REQUIRED)
+    find_package(FFTW ${FFTW_TEST_VERSION} REQUIRED)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -25,6 +25,20 @@ endif()
 
 if(NOT FFTW_LIBRARIES)
     message(FATAL_ERROR "FFTW_LIBRARIES is empty after find_package(FFTW REQUIRED)")
+endif()
+
+if(NOT FFTW_VERSION)
+    message(FATAL_ERROR "FFTW_VERSION is empty after find_package(FFTW REQUIRED)")
+endif()
+
+# ---------------------------------------------------------------------------
+# Version checks
+# ---------------------------------------------------------------------------
+if(FFTW_TEST_VERSION)
+    if(NOT "${FFTW_VERSION}" VERSION_GREATER_EQUAL "${FFTW_TEST_VERSION}")
+        message(FATAL_ERROR
+            "Expected FFTW_VERSION >= ${FFTW_TEST_VERSION} but got ${FFTW_VERSION}")
+    endif()
 endif()
 
 # ---------------------------------------------------------------------------
@@ -71,6 +85,7 @@ endforeach()
 # ---------------------------------------------------------------------------
 message(STATUS "FindFFTW test passed!")
 message(STATUS "  FFTW_FOUND:        ${FFTW_FOUND}")
+message(STATUS "  FFTW_VERSION:      ${FFTW_VERSION}")
 message(STATUS "  FFTW_INCLUDE_DIRS: ${FFTW_INCLUDE_DIRS}")
 message(STATUS "  FFTW_LIBRARIES:    ${FFTW_LIBRARIES}")
 

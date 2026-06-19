@@ -24,6 +24,24 @@ jobs:
           cmake -S test -B build \
             -DFFTW_TEST_COMPONENTS="${fftw_components}"
 
+      - name: Configure test with version 3
+        run: |
+          cmake -S test -B build \
+            -DFFTW_TEST_COMPONENTS="${fftw_components}" \
+            -DFFTW_TEST_VERSION=3
+
+      - name: Configure test with invalid version
+        run: |
+          set +e
+          cmake -S test -B build_version_fail -DFFTW_TEST_VERSION=999.99.9 2>/dev/null
+          STATUS=$?
+          if [ $STATUS -ne 0 ]; then
+            echo "PASS: find_package correctly rejected version 999.99.9"
+          else
+            echo "FAIL: find_package should have rejected version 999.99.9 but succeeded"
+            exit 1
+          fi
+
   test-source:
     name: Test source install
     runs-on: ubuntu-latest
@@ -79,6 +97,13 @@ jobs:
             -DFFTW_ROOT="$HOME/fftw_install" \
             -DFFTW_TEST_COMPONENTS="${fftw_components}"
 
+      - name: Configure test with version 3
+        run: |
+          cmake -S test -B build \
+            -DFFTW_ROOT="$HOME/fftw_install" \
+            -DFFTW_TEST_COMPONENTS="${fftw_components}" \
+            -DFFTW_TEST_VERSION=3
+
   test-conda:
     name: Test conda-forge install
     runs-on: ubuntu-latest
@@ -99,3 +124,11 @@ jobs:
           cmake -S test -B build \
             -DFFTW_ROOT="$CONDA_PREFIX" \
             -DFFTW_TEST_COMPONENTS="${fftw_components}"
+
+      - name: Configure test with version 3
+        shell: micromamba-shell {0}
+        run: |
+          cmake -S test -B build \
+            -DFFTW_ROOT="$CONDA_PREFIX" \
+            -DFFTW_TEST_COMPONENTS="${fftw_components}" \
+            -DFFTW_TEST_VERSION=3

@@ -7,7 +7,7 @@
 #   Copyright (c) 2017, Patrick Bos
 #
 # Usage:
-#   find_package(FFTW [REQUIRED] [QUIET] [COMPONENTS component1 ... componentX] )
+#   find_package(FFTW [<version>] [REQUIRED] [QUIET] [COMPONENTS component1 ... componentX] )
 #
 # It sets the following variables:
 #   FFTW_FOUND                  ... true if fftw is found on the system
@@ -15,6 +15,7 @@
 #   FFTW_LIBRARIES              ... full paths to all found fftw libraries
 #   FFTW_[component]_LIB        ... full path to one of the components (see below)
 #   FFTW_INCLUDE_DIRS           ... fftw include directory paths
+#   FFTW_VERSION                ... version of the found fftw library
 #
 # The following variables will be checked by the function
 #   FFTW_USE_STATIC_LIBS        ... if true, only static libraries are found, otherwise both static and shared.
@@ -44,9 +45,31 @@ endif()
 # Check if we can use PkgConfig
 find_package(PkgConfig)
 
-#Determine from PKG
+# Determine from PKG
 if( PKG_CONFIG_FOUND AND NOT FFTW_ROOT )
     pkg_check_modules( PKG_FFTW QUIET "fftw3" )
+    set( FFTW_VERSION ${PKG_FFTW_VERSION} )
+else()
+    # If pkg-config was skipped, there seems no way to get the version directly.
+    # Try to deduce the version from fftw-wisdom-to-conf instead.
+    #   (From @kprussing. See https://github.com/egpbos/findFFTW/pull/8)
+    execute_process(COMMAND ${FFTW_ROOT}/bin/fftw-wisdom-to-conf -V
+                    RESULT_VARIABLE _fftw_wtc_success
+                    OUTPUT_VARIABLE _fftw_wtc_stdout
+                    ERROR_VARIABLE _fftw_wtc_stderr)
+    if (_fftw_wtc_success EQUAL 0)
+        string(REGEX MATCH "FFTW *version *([0-9]+([.][0-9]+([.][0-9]+)?)?)"
+                _fftw_wtc_version ${_fftw_wtc_stdout})
+        string(REPLACE " " ";" _fftw_wtc_version_list ${_fftw_wtc_version})
+        list(GET _fftw_wtc_version_list -1 FFTW_VERSION)
+    else()
+        message(WARNING "Error running ${FFTW_ROOT}/bin/fftw-wisdom-to-conf. "
+                        "Could not determine FFTW version.
+Output:
+${_fftw_wtc_stdout}
+Error:
+${_fftw_wtc_stderr}")
+    endif()
 endif()
 
 #Check whether to search static or dynamic libs
@@ -398,6 +421,7 @@ include(FindPackageHandleStandardArgs)
 
 find_package_handle_standard_args(FFTW
     REQUIRED_VARS FFTW_INCLUDE_DIRS
+    VERSION_VAR FFTW_VERSION
     HANDLE_COMPONENTS
     )
 
