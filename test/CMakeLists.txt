@@ -4,8 +4,13 @@ project(test_findFFTW NONE)
 # Add the parent directory (repo root) to the module path so CMake can find FindFFTW.cmake
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/..")
 
-# Call find_package with the assembled arguments
-find_package(FFTW ${FFTW_TEST_VERSION} REQUIRED ${FFTW_TEST_COMPONENTS})
+# Find FFTW. If FFTW_TEST_COMPONENTS is given (semicolon-separated list), those
+# components are required; otherwise we just require that FFTW itself is found.
+if(FFTW_TEST_COMPONENTS)
+    find_package(FFTW ${FFTW_TEST_VERSION} REQUIRED COMPONENTS ${FFTW_TEST_COMPONENTS})
+else()
+    find_package(FFTW ${FFTW_TEST_VERSION} REQUIRED)
+endif()
 
 # ---------------------------------------------------------------------------
 # Check that the basic variables are set
