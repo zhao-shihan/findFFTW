@@ -101,7 +101,7 @@ jobs:
         run: |
           cmake -S test -B build \
             -DFFTW_ROOT="$HOME/fftw_install" \
-            -DFFTW_TEST_COMPONENTS="${fftw_components}"
+            -DFFTW_TEST_COMPONENTS="${fftw_components}" \
             -DFFTW_TEST_VERSION=3
 
   test-conda:
