@@ -1,0 +1,101 @@
+name: Test findFFTW
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test-apt:
+    name: Test apt install
+    runs-on: ubuntu-latest
+    env:
+      fftw_components: "DOUBLE_LIB;FLOAT_LIB;LONGDOUBLE_LIB;DOUBLE_THREADS_LIB;FLOAT_THREADS_LIB;LONGDOUBLE_THREADS_LIB;DOUBLE_OPENMP_LIB;FLOAT_OPENMP_LIB;LONGDOUBLE_OPENMP_LIB"
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install FFTW
+        run: sudo apt-get install -y libfftw3-dev
+
+      - name: Configure test
+        run: |
+          cmake -S test -B build \
+            -DFFTW_TEST_COMPONENTS="${fftw_components}"
+
+  test-source:
+    name: Test source install
+    runs-on: ubuntu-latest
+    env:
+      fftw_components: "DOUBLE_LIB;DOUBLE_THREADS_LIB;DOUBLE_OPENMP_LIB;FLOAT_LIB;FLOAT_THREADS_LIB;FLOAT_OPENMP_LIB;LONGDOUBLE_LIB;LONGDOUBLE_THREADS_LIB;LONGDOUBLE_OPENMP_LIB"
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Cache FFTW build
+        id: cache-fftw
+        uses: actions/cache@v5
+        with:
+          path: ~/fftw_install
+          key: fftw-3.3.10-${{ runner.os }}-double-float-longdouble-threads-openmp
+
+      - name: Build FFTW from source tarball
+        if: steps.cache-fftw.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/fftw_build ~/fftw_install
+          cd ~/fftw_build
+
+          wget -q https://www.fftw.org/fftw-3.3.10.tar.gz
+          tar -xzf fftw-3.3.10.tar.gz
+
+          FFTW_SRC="$HOME/fftw_build/fftw-3.3.10"
+          FFTW_INSTALL="$HOME/fftw_install"
+          COMMON_FLAGS="--prefix=$FFTW_INSTALL --enable-shared --enable-threads --enable-openmp"
+
+          # Double precision (default)
+          mkdir build_double && cd build_double
+          $FFTW_SRC/configure $COMMON_FLAGS
+          make -j$(nproc)
+          make install
+          cd ..
+
+          # Single (float) precision
+          mkdir build_float && cd build_float
+          $FFTW_SRC/configure $COMMON_FLAGS --enable-float
+          make -j$(nproc)
+          make install
+          cd ..
+
+          # Long double precision
+          mkdir build_longdouble && cd build_longdouble
+          $FFTW_SRC/configure $COMMON_FLAGS --enable-long-double
+          make -j$(nproc)
+          make install
+          cd ..
+
+      - name: Configure test
+        run: |
+          cmake -S test -B build \
+            -DFFTW_ROOT="$HOME/fftw_install" \
+            -DFFTW_TEST_COMPONENTS="${fftw_components}"
+
+  test-conda:
+    name: Test conda-forge install
+    runs-on: ubuntu-latest
+    env:
+      fftw_components: "DOUBLE_LIB;FLOAT_LIB;LONGDOUBLE_LIB;DOUBLE_THREADS_LIB;FLOAT_THREADS_LIB;LONGDOUBLE_THREADS_LIB"
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install FFTW with conda-forge (micromamba)
+        uses: mamba-org/setup-micromamba@v3
+        with:
+          environment-name: fftw-test
+          create-args: conda-forge::fftw
+          init-shell: bash
+          post-cleanup: none
+      - name: Configure test
+        shell: micromamba-shell {0}
+        run: |
+          cmake -S test -B build \
+            -DFFTW_ROOT="$CONDA_PREFIX" \
+            -DFFTW_TEST_COMPONENTS="${fftw_components}"
