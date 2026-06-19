@@ -4,12 +4,27 @@ project(test_findFFTW NONE)
 # Add the parent directory (repo root) to the module path so CMake can find FindFFTW.cmake
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/..")
 
-# Find FFTW. If FFTW_TEST_COMPONENTS is given (semicolon-separated list), those
-# components are required; otherwise we just require that FFTW itself is found.
+# ---------------------------------------------------------------------------
+# Build find_package arguments
+# ---------------------------------------------------------------------------
+
+# Resolve version argument from FFTW_TEST_VERSION
+set(_fftw_find_version "")
+if(DEFINED FFTW_TEST_VERSION)
+    set(_fftw_find_version "${FFTW_TEST_VERSION}")
+endif()
+
+# Collect COMPONENTS argument
+set(_fftw_components "")
 if(DEFINED FFTW_TEST_COMPONENTS)
-    find_package(FFTW REQUIRED COMPONENTS ${FFTW_TEST_COMPONENTS})
+    set(_fftw_components COMPONENTS ${FFTW_TEST_COMPONENTS})
+endif()
+
+# Call find_package with the assembled arguments
+if(_fftw_find_version)
+    find_package(FFTW ${_fftw_find_version} REQUIRED ${_fftw_components})
 else()
-    find_package(FFTW REQUIRED)
+    find_package(FFTW REQUIRED ${_fftw_components})
 endif()
 
 # ---------------------------------------------------------------------------
@@ -19,12 +34,34 @@ if(NOT FFTW_FOUND)
     message(FATAL_ERROR "FFTW_FOUND is not TRUE after find_package(FFTW REQUIRED)")
 endif()
 
-if(NOT FFTW_INCLUDE_DIRS)
+if("${FFTW_VERSION}" STREQUAL "")
+    message(FATAL_ERROR "FFTW_VERSION is empty after find_package(FFTW REQUIRED)")
+endif()
+
+if("${FFTW_INCLUDE_DIRS}" STREQUAL "")
     message(FATAL_ERROR "FFTW_INCLUDE_DIRS is empty after find_package(FFTW REQUIRED)")
 endif()
 
-if(NOT FFTW_LIBRARIES)
+if("${FFTW_LIBRARIES}" STREQUAL "")
     message(FATAL_ERROR "FFTW_LIBRARIES is empty after find_package(FFTW REQUIRED)")
+endif()
+
+# ---------------------------------------------------------------------------
+# Version checks
+# ---------------------------------------------------------------------------
+if(_fftw_find_version)
+    if("${FFTW_VERSION}" STREQUAL "")
+        message(FATAL_ERROR
+            "FFTW_VERSION is not set after find_package. "
+            "Version detection requires pkg-config, which is not used when "
+            "FFTW_ROOT is set or pkg-config is unavailable. "
+            "Do not set FFTW_TEST_VERSION when using FFTW_ROOT.")
+    endif()
+
+    if(NOT "${FFTW_VERSION}" VERSION_GREATER_EQUAL "${_fftw_find_version}")
+        message(FATAL_ERROR
+            "Expected FFTW_VERSION >= ${_fftw_find_version} but got ${FFTW_VERSION}")
+    endif()
 endif()
 
 # ---------------------------------------------------------------------------
@@ -71,6 +108,7 @@ endforeach()
 # ---------------------------------------------------------------------------
 message(STATUS "FindFFTW test passed!")
 message(STATUS "  FFTW_FOUND:        ${FFTW_FOUND}")
+message(STATUS "  FFTW_VERSION:      ${FFTW_VERSION}")
 message(STATUS "  FFTW_INCLUDE_DIRS: ${FFTW_INCLUDE_DIRS}")
 message(STATUS "  FFTW_LIBRARIES:    ${FFTW_LIBRARIES}")
 
